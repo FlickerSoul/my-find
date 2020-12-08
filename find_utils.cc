@@ -13,10 +13,10 @@ static std::vector<parser_t> parsers;
 int parser_base(std::string flag, argument_map_t* const argument_map, int current_counter, int argc, char* const argv[], eliminator_t eliminator_func, string_processor processor) {
     printff("started %s parsing\n", flag.c_str());
     if (current_counter < argc && ((std::string) argv[current_counter]).compare(flag) == 0) {
-        // if (argument_map->contains(flag)) {
-        //     printff("duplicated symbol %s\n", flag.c_str());
-        //     return -1;
-        // }
+        if (argument_map->contains(flag)) {
+            printff("duplicated symbol %s\n", flag.c_str());
+            return -1;
+        }
 
         printff("matched flag %s\n", flag.c_str());
 
@@ -28,7 +28,10 @@ int parser_base(std::string flag, argument_map_t* const argument_map, int curren
             printff("eliminated %s\n", argv[current_counter-1]);
         }
 
-        value.erase(value.end() - 1);
+        if (value.length() > 0) {
+            value.erase(value.end() - 1);
+        }
+
         auto temp_vector = processor(value);
 
         if (temp_vector == nullptr) {
@@ -149,7 +152,13 @@ int parse_type(argument_map_t* argument_map, int current_counter, int argc, char
 
 
 bool exec_eliminator(char* const cstr) {
-    return ((std::string) cstr).compare(";");
+    return 
+        ((std::string) cstr).compare(NAME_ARG_FLAG) &&
+        ((std::string) cstr).compare(MTIME_ARG_FLAG) &&
+        ((std::string) cstr).compare(TYPE_ARG_FLAG) &&
+        ((std::string) cstr).compare(EXEC_ARG_FLAG) &&
+        ((std::string) cstr).compare(PRINT_ARG_FLAG) &&
+        ((std::string) cstr).compare(SL_ARG_FLAG);
 }
 
 
@@ -177,6 +186,10 @@ argument_map_value_t* boolean_value_processor(std::string value) {
     return new argument_map_value_t;
 }
 
+bool empty_eliminator(char* const cstr) {
+    return false;
+}
+
 // -print
 int parse_print(argument_map_t* argument_map, int current_counter, int argc, char* const argv[]) {
     return parser_base(
@@ -185,8 +198,8 @@ int parse_print(argument_map_t* argument_map, int current_counter, int argc, cha
         current_counter, 
         argc,
         argv,
-        default_eliminator,
-        default_parser
+        empty_eliminator,
+        boolean_value_processor
     );
 }
 
@@ -198,8 +211,8 @@ int parse_symbolic_link(argument_map_t* argument_map, int current_counter, int a
         current_counter, 
         argc,
         argv,
-        default_eliminator,
-        default_parser
+        empty_eliminator,
+        boolean_value_processor
     );
 }
 
@@ -282,11 +295,13 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
         }
 
         if (temp_counter == counter) {
+            printf("temp counter is equal to counter %i\n", counter);
             return nullptr;
         }
         counter = temp_counter;
     }
     
+    printff("finished parsing\n");
     return objects;
 }
 
