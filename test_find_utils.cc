@@ -17,5 +17,11 @@ int main(int argc, char* argv[]) {
                 printf("\n");
             }
         }
+        printf("========\n");
+        auto loc = (*(map->find(LOCATION_FLAG)->second))[0];
+        auto results = find_helper(map, loc);
+        for (auto & path: *results) {
+            std::cout << path << std::endl;
+        }
     }
 }

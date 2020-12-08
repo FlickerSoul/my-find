@@ -3,8 +3,6 @@
 
 static auto default_name_regex = "*";
 
-static std::vector<parser_t> parsers;
-
 // parser guildline 
 // if -1 is returned, parsing error 
 // other wise a new counter is returned 
@@ -176,7 +174,8 @@ int parse_exec(argument_map_t* argument_map, int current_counter, int argc, char
 }
 
 void post_parsing(argument_map_t* argumnt_map) {
-    
+    // if not print/exec add print 
+    // if l and -L both exists, remove -l
 }
 
 // if the key is not in the mapping, it's evaluated false 
@@ -204,6 +203,25 @@ int parse_print(argument_map_t* argument_map, int current_counter, int argc, cha
 }
 
 // -L
+/** 
+ *  Follow symbolic links.  When find examines or prints information
+    about files, the information used shall be taken from the  prop‐
+    erties  of  the file to which the link points, not from the link
+    itself (unless it is a broken symbolic link or find is unable to
+    examine  the file to which the link points).  Use of this option
+    implies -noleaf.  If you later use the -P option,  -noleaf  will
+    still  be  in  effect.   If -L is in effect and find discovers a
+    symbolic link to a subdirectory during its search, the subdirec‐
+    tory pointed to by the symbolic link will be searched.
+
+    When the -L option is in effect, the -type predicate will always
+    match against the type of the file that a symbolic  link  points
+    to rather than the link itself (unless the symbolic link is bro‐
+    ken).  Actions that can cause symbolic links  to  become  broken
+    while  find  is executing (for example -delete) can give rise to
+    confusing behaviour.  Using -L causes  the  -lname  and  -ilname
+    predicates always to return false.
+ */
 int parse_symbolic_link(argument_map_t* argument_map, int current_counter, int argc, char* const argv[]) {
     return parser_base(
         SL_ARG_FLAG,
@@ -244,6 +262,59 @@ bool wild_card_match(char const *first, char const * second) {
 } 
 
 
+bool name_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
+    auto arg_map = *argument_map_ptr;
+    auto name = (*arg_map[NAME_ARG_FLAG])[0];
+    return wild_card_match(name.c_str(), ((std::string)target_path).c_str());
+}
+
+
+bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
+    return true;
+}
+
+bool type_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
+    return true;
+}
+
+bool is_soft_link(argument_map_t* const argument_map_ptr, fs::path const target_path) {
+    return true;
+}
+
+bool should_exec(argument_map_t* const argument_map_ptr) {
+    return false;
+}
+
+bool should_print(argument_map_t* const argument_map_ptr) {
+    return true;
+}
+
+
+bool match_and_add(result_list_t* result_list_ptr, argument_map_t* argument_map_ptr, fs::path target_path) {
+    // result_list->push_back(target_path);
+    if (name_match(argument_map_ptr, target_path) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path)) {
+        result_list_ptr->push_back(target_path);
+        return true;
+    }
+    
+    return false;
+}
+
+
+void init() {
+    parsers.push_back(parse_name);
+    parsers.push_back(parse_mtime);
+    parsers.push_back(parse_type);
+    parsers.push_back(parse_exec);
+    parsers.push_back(parse_print);
+    parsers.push_back(parse_symbolic_link);
+
+    matchers.push_back(name_match);
+    matchers.push_back(time_match);
+    matchers.push_back(type_match);
+}
+
+
 argument_map_t* parse_arguments(int argc, char* argv[]) {
     // the first argument is the program name, ignored 
     printff("argc: %i\n", argc);
@@ -277,13 +348,12 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
         return nullptr;
     }
 
-    // parse arguments 
-    parsers.push_back(parse_name);
-    parsers.push_back(parse_mtime);
-    parsers.push_back(parse_type);
-    parsers.push_back(parse_exec);
-    parsers.push_back(parse_print);
-    parsers.push_back(parse_symbolic_link);
+    objects->insert(std::pair(
+        LOCATION_FLAG, search_locations
+    ));
+
+    // parse arguments
+    init();
 
     while (counter < argc) {
         int temp_counter = counter;
@@ -306,8 +376,28 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
 }
 
 
-result_list_t* find_helper(argument_map_t* argument_map) {
+result_list_t* find_helper(argument_map_t* argument_map, fs::path path) {
+    if (!fs::exists(path)) {
+        return nullptr;
+    }
+    
+    result_list_t* result_list = new result_list_t();
+    if (fs::is_directory(path)) {
+        for (auto & p: fs::directory_iterator(path)) {
+            auto file_path = p.path();
+            match_and_add(result_list, argument_map, file_path);
 
+            if (fs::is_directory(file_path)) {
+                auto sub_result_list = find_helper(argument_map, file_path);
+                result_list->insert(result_list->end(), sub_result_list->begin(), sub_result_list->end());
+                free(sub_result_list);
+            }
+        }
+    } else {
+        match_and_add(result_list, argument_map, path);
+    }
+
+    return result_list;
 }
 
 void exec_helper(result_list_t* result_list) {
