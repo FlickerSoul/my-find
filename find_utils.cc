@@ -273,12 +273,50 @@ bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
     return true;
 }
 
+
+static std::map<std::string, std::function<bool (const fs::path& )>> validation_mapping = {
+    {"b", static_cast<bool(*) (const fs::path& )>(fs::is_block_file)},
+    {"c", static_cast<bool(*) (const fs::path& )>(fs::is_character_file)},
+    {"d", static_cast<bool(*) (const fs::path& )>(fs::is_directory)},
+    {"p", static_cast<bool(*) (const fs::path& )>(fs::is_fifo)},
+    {"f", static_cast<bool(*) (const fs::path& )>(fs::is_regular_file)},
+    {"l", static_cast<bool(*) (const fs::path& )>(fs::is_symlink)},
+    {"s", static_cast<bool(*) (const fs::path& )>(fs::is_socket)}
+};
+
 bool type_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
-    return true;
+    argument_map_value_t type_vec = *((*argument_map_ptr)[TYPE_ARG_FLAG]);
+    /**
+     *  b      block (buffered) special
+
+        c      character (unbuffered) special
+
+        d      directory
+
+        p      named pipe (FIFO)
+
+        f      regular file
+
+        l      symbolic link; this is never true if the -L option or the
+                -follow  option is in effect, unless the symbolic link is
+                broken.  If you want to search for symbolic links when -L
+                is in effect, use -xtype.
+
+        s      socket
+     */
+    printff("type match %s =====\n", ((std::string)target_path).c_str());
+    for (std::string & type: type_vec) {
+        auto test_func = validation_mapping[type];
+        printff("not %s\n", type.c_str());
+        if (test_func(target_path)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool is_soft_link(argument_map_t* const argument_map_ptr, fs::path const target_path) {
-    return true;
+    return fs::is_symlink(target_path);
 }
 
 bool should_exec(argument_map_t* const argument_map_ptr) {
@@ -292,11 +330,12 @@ bool should_print(argument_map_t* const argument_map_ptr) {
 
 bool match_and_add(result_list_t* result_list_ptr, argument_map_t* argument_map_ptr, fs::path target_path) {
     // result_list->push_back(target_path);
-    if (name_match(argument_map_ptr, target_path) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path)) {
+    auto target_tile_name = target_path.filename();
+    if (((name_match(argument_map_ptr, target_tile_name) || name_match(argument_map_ptr, target_path)) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path))) {
         result_list_ptr->push_back(target_path);
         return true;
     }
-    
+
     return false;
 }
 
@@ -383,8 +422,11 @@ result_list_t* find_helper(argument_map_t* argument_map, fs::path path) {
     
     result_list_t* result_list = new result_list_t();
     if (fs::is_directory(path)) {
+        printff("scan dir %s\n", ((std::string) path).c_str());
+
         for (auto & p: fs::directory_iterator(path)) {
             auto file_path = p.path();
+            printff("scaned file %s\n", ((std::string) file_path).c_str());
             match_and_add(result_list, argument_map, file_path);
 
             if (fs::is_directory(file_path)) {
