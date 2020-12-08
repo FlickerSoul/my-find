@@ -1,12 +1,12 @@
 CXX=g++
-CXX_FLAGS=-g -std=c++17
+CXX_FLAGS=-g -std=c++2a
 VALGRIND=valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes
 .PHONY: all clean
 
 all: $(TARGETS)
 
 
-thread_pool.o: thread_pool.cc thread_pool.hh
+find_utils.o: find_utils.cc find_utils.hh
 	$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
 utilities.o: utilities.cc utilities.hh
@@ -31,7 +31,7 @@ grep: clean grep.o ./tests/grep_tests/
 	./grep.o abc ./tests/grep_tests/1.in
 
 
-thread_pool_test.o: thread_pool_test.cc thread_pool.o
+test_find_utils.o: test_find_utils.cc find_utils.o
 	$(CXX) $(CXX_FLAGS) -o $@ $^
 
 utilities_test.o: utilities_test.cc utilities.o
