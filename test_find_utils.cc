@@ -1,6 +1,7 @@
 #include "find_utils.hh"
 
 int main(int argc, char* argv[]) {
+    _DEBUG = true;
     auto map = parse_arguments(argc, argv);
     if (map == nullptr) {
         printf("invalid parsing\n");

@@ -16,6 +16,8 @@ int main(int argc, char* argv[]) {
         free(new_result_list);
     }
 
+    printff("result size: %lu\n", result_list.size());
+
     if (should_print(argument_mapping)) {
         print_helper(&result_list);
     }

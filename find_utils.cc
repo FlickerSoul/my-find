@@ -211,13 +211,12 @@ void post_parsing(argument_map_t* argument_map) {
 
 
     // if l and -L both exists, remove -l
-    argument_map_value_t* type_vec = (*argument_map)[TYPE_ARG_FLAG];
-    auto sl_type_pos = std::find_if(type_vec->begin(), type_vec->end(), [](std::string t){return t.compare("l") == 0;});
-    if (argument_map->contains(SL_ARG_FLAG) && sl_type_pos != type_vec->end()) {
-        printff("remove -l from list\n");
-        type_vec->erase(sl_type_pos);
-    }
-
+    // argument_map_value_t* type_vec = (*argument_map)[TYPE_ARG_FLAG];
+    // auto sl_type_pos = std::find_if(type_vec->begin(), type_vec->end(), [](std::string t){return t.compare("l") == 0;});
+    // if (argument_map->contains(SL_ARG_FLAG) && sl_type_pos != type_vec->end()) {
+    //     printff("remove -l from list\n");
+    //     type_vec->erase(sl_type_pos);
+    // }
 }
 
 // if the key is not in the mapping, it's evaluated false 
@@ -312,6 +311,10 @@ bool name_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
 
 
 bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
+    if (!argument_map_ptr->contains(MTIME_ARG_FLAG)) {
+        return true;
+    }
+
     long long time_range = atoi((*(*argument_map_ptr)[MTIME_ARG_FLAG])[0].c_str());
     auto file_last_modified_time = fs::last_write_time(target_path);
     auto current_time = std::chrono::system_clock::now();
@@ -367,22 +370,24 @@ bool follow_sl(argument_map_t* const argument_map_ptr) {
 
 bool match_and_add(result_list_t* result_list_ptr, argument_map_t* argument_map_ptr, fs::path target_path) {
     // result_list->push_back(target_path);
-    printf("started matching and adding\n");
+    printff("started matching and adding\n");
     if (follow_sl(argument_map_ptr) && fs::is_symlink(target_path)) {
         printff("followed on sym link on %s\n", ((std::string)target_path).c_str());
-        target_path = fs::read_symlink(target_path);
+        auto symlink_source = fs::read_symlink(target_path);
+        if (fs::exists(symlink_source)) {
+            target_path = symlink_source;
+        }
+        printff("symlink source: %s\n", ((std::string)symlink_source).c_str());
     } else {
         printff("not symlink\n");
     }
 
-    auto target_tile_name = target_path.filename();
-    if (((name_match(argument_map_ptr, target_tile_name) || name_match(argument_map_ptr, target_path)) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path))) {
-        printf("matched\n");
+    if (((name_match(argument_map_ptr, target_path.filename()) || name_match(argument_map_ptr, target_path)) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path))) {
+        printff("matched\n");
         result_list_ptr->push_back(target_path);
         return true;
     }
-    printf("not matched\n");
-
+    printff("not matched\n");
 
     return false;
 }
@@ -409,12 +414,16 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
     if (argc < 2) {
         return nullptr;
     }
+    printff("init objects\n");
 
     auto objects = new argument_map_t;
 
-    int counter = 1; 
+    int base_counter = 1; 
+    base_counter = parse_symbolic_link(objects, base_counter, argc, argv);
 
     std::string argument;
+
+    auto counter = base_counter;
 
     // find find all the specified locations
     while (counter < argc && !(argument = (std::string)(argv[counter])).starts_with("-")) {
@@ -424,14 +433,16 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
 
     // load all locations 
     std::vector<std::string>* search_locations = new std::vector<std::string>();
-    for (int index = 1; index < counter; index++) {
+    for (int index = base_counter; index < counter; index++) {
         auto location_string = (std::string)argv[index];
-        std::cout << "location " << location_string << std::endl;
+        printff("location: %c\n", location_string.c_str());
         search_locations->push_back(location_string);
     }
+    printff("loaded locations\n");
 
     // if the location is not specified 
     if (search_locations->size() == 0) {
+        printff("no location founded\n");
         return nullptr;
     }
 
@@ -452,7 +463,7 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
         }
 
         if (temp_counter == counter) {
-            printf("temp counter is equal to counter %i\n", counter);
+            printff("temp counter is equal to counter %i\n", counter);
             return nullptr;
         }
         counter = temp_counter;
