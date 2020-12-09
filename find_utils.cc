@@ -312,7 +312,12 @@ bool name_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
 
 
 bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
-    return true;
+    long long time_range = atoi((*(*argument_map_ptr)[MTIME_ARG_FLAG])[0].c_str());
+    auto file_last_modified_time = fs::last_write_time(target_path);
+    auto current_time = std::chrono::system_clock::now();
+    auto hours_lasted = std::chrono::duration_cast<std::chrono::hours>(current_time.time_since_epoch()).count() - std::chrono::duration_cast<std::chrono::hours>(file_last_modified_time.time_since_epoch()).count();
+
+    return 24 * time_range > hours_lasted;
 }
 
 bool type_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
