@@ -174,6 +174,17 @@ int parse_exec(argument_map_t* argument_map, int current_counter, int argc, char
 }
 
 void post_parsing(argument_map_t* argument_map) {
+    // if no name arg, add *
+    if (!argument_map->contains(NAME_ARG_FLAG)) {
+        argument_map->insert(
+            std::pair(
+                NAME_ARG_FLAG,
+                new argument_map_value_t({
+                    "*"
+                })
+            )
+        );
+    }
     // if not print/exec add print 
     if (!argument_map->contains(EXEC_ARG_FLAG) && !argument_map->contains(PRINT_ARG_FLAG)) {
         printff("added print flag since neigther exec nor print exists\n");
@@ -305,6 +316,7 @@ bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
 }
 
 bool type_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
+    printff("started type matching\n");
     argument_map_value_t type_vec = *((*argument_map_ptr)[TYPE_ARG_FLAG]);
     /**
      *  b      block (buffered) special
@@ -335,10 +347,6 @@ bool type_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
     return false;
 }
 
-bool is_soft_link(argument_map_t* const argument_map_ptr, fs::path const target_path) {
-    return fs::is_symlink(target_path);
-}
-
 bool should_exec(argument_map_t* const argument_map_ptr) {
     return argument_map_ptr->contains(EXEC_ARG_FLAG);
 }
@@ -354,15 +362,22 @@ bool follow_sl(argument_map_t* const argument_map_ptr) {
 
 bool match_and_add(result_list_t* result_list_ptr, argument_map_t* argument_map_ptr, fs::path target_path) {
     // result_list->push_back(target_path);
+    printf("started matching and adding\n");
     if (follow_sl(argument_map_ptr) && fs::is_symlink(target_path)) {
+        printff("followed on sym link on %s\n", ((std::string)target_path).c_str());
         target_path = fs::read_symlink(target_path);
+    } else {
+        printff("not symlink\n");
     }
 
     auto target_tile_name = target_path.filename();
     if (((name_match(argument_map_ptr, target_tile_name) || name_match(argument_map_ptr, target_path)) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path))) {
+        printf("matched\n");
         result_list_ptr->push_back(target_path);
         return true;
     }
+    printf("not matched\n");
+
 
     return false;
 }
@@ -448,8 +463,15 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
 
 result_list_t* find_helper(argument_map_t* argument_map, fs::path path) {
     if (!fs::exists(path)) {
+        printff("no such path %s\n", ((std::string)path).c_str());
         return nullptr;
     }
+
+    if (argument_map == nullptr) {
+        printff("empty argument mapping\n");
+    }
+
+    printff("start finding\n");
     
     result_list_t* result_list = new result_list_t();
     if (fs::is_directory(path)) {

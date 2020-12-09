@@ -54,6 +54,8 @@ static std::map<std::string, std::function<bool (const fs::path& )>> validation_
 // parsers 
 argument_map_t* parse_arguments(int argc, char* argv[]);
 result_list_t* find_helper(argument_map_t* argument_map, fs::path path);
+bool should_print(argument_map_t* const argument_map_ptr);
+bool should_exec(argument_map_t* const argument_map_ptr) ;
 void exec_helper(result_list_t* result_list, std::string exec_string);
 void print_helper(result_list_t* result_list_t);
 
