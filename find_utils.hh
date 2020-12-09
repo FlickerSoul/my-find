@@ -39,6 +39,17 @@ static bool _DEBUG = true;
 static std::vector<parser_t> parsers;
 static std::vector<matcher_t> matchers;
 
+
+static std::map<std::string, std::function<bool (const fs::path& )>> validation_mapping = {
+    {"b", static_cast<bool(*) (const fs::path& )>(fs::is_block_file)},
+    {"c", static_cast<bool(*) (const fs::path& )>(fs::is_character_file)},
+    {"d", static_cast<bool(*) (const fs::path& )>(fs::is_directory)},
+    {"p", static_cast<bool(*) (const fs::path& )>(fs::is_fifo)},
+    {"f", static_cast<bool(*) (const fs::path& )>(fs::is_regular_file)},
+    {"l", static_cast<bool(*) (const fs::path& )>(fs::is_symlink)},
+    {"s", static_cast<bool(*) (const fs::path& )>(fs::is_socket)}
+};
+
 // parsers 
 argument_map_t* parse_arguments(int argc, char* argv[]);
 result_list_t* find_helper(argument_map_t* argument_map, fs::path path);

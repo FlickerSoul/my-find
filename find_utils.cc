@@ -173,9 +173,40 @@ int parse_exec(argument_map_t* argument_map, int current_counter, int argc, char
     );
 }
 
-void post_parsing(argument_map_t* argumnt_map) {
+void post_parsing(argument_map_t* argument_map) {
     // if not print/exec add print 
+    if (!argument_map->contains(EXEC_ARG_FLAG) && !argument_map->contains(PRINT_ARG_FLAG)) {
+        printff("added print flag since neigther exec nor print exists\n");
+        argument_map->insert(
+            std::pair(
+                PRINT_ARG_FLAG, 
+                new argument_map_value_t()
+            )
+        );
+    }
+    
+    // if there is no type, add all types
+    if (!argument_map->contains(TYPE_ARG_FLAG)) {
+        printff("added all types\n");
+        argument_map->insert(
+            std::pair(
+                TYPE_ARG_FLAG, 
+                new argument_map_value_t(
+                    {"b", "c", "d", "p", "f", "l", "s"}
+                )
+            )
+        );
+    }
+
+
     // if l and -L both exists, remove -l
+    argument_map_value_t* type_vec = (*argument_map)[TYPE_ARG_FLAG];
+    auto sl_type_pos = std::find_if(type_vec->begin(), type_vec->end(), [](std::string t){return t.compare("l") == 0;});
+    if (argument_map->contains(SL_ARG_FLAG) && sl_type_pos != type_vec->end()) {
+        printff("remove -l from list\n");
+        type_vec->erase(sl_type_pos);
+    }
+
 }
 
 // if the key is not in the mapping, it's evaluated false 
@@ -273,17 +304,6 @@ bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
     return true;
 }
 
-
-static std::map<std::string, std::function<bool (const fs::path& )>> validation_mapping = {
-    {"b", static_cast<bool(*) (const fs::path& )>(fs::is_block_file)},
-    {"c", static_cast<bool(*) (const fs::path& )>(fs::is_character_file)},
-    {"d", static_cast<bool(*) (const fs::path& )>(fs::is_directory)},
-    {"p", static_cast<bool(*) (const fs::path& )>(fs::is_fifo)},
-    {"f", static_cast<bool(*) (const fs::path& )>(fs::is_regular_file)},
-    {"l", static_cast<bool(*) (const fs::path& )>(fs::is_symlink)},
-    {"s", static_cast<bool(*) (const fs::path& )>(fs::is_socket)}
-};
-
 bool type_match(argument_map_t* const argument_map_ptr, fs::path const target_path) {
     argument_map_value_t type_vec = *((*argument_map_ptr)[TYPE_ARG_FLAG]);
     /**
@@ -320,16 +340,24 @@ bool is_soft_link(argument_map_t* const argument_map_ptr, fs::path const target_
 }
 
 bool should_exec(argument_map_t* const argument_map_ptr) {
-    return false;
+    return argument_map_ptr->contains(EXEC_ARG_FLAG);
 }
 
 bool should_print(argument_map_t* const argument_map_ptr) {
-    return true;
+    return argument_map_ptr->contains(PRINT_ARG_FLAG);
+}
+
+bool follow_sl(argument_map_t* const argument_map_ptr) {
+    return argument_map_ptr->contains(SL_ARG_FLAG);
 }
 
 
 bool match_and_add(result_list_t* result_list_ptr, argument_map_t* argument_map_ptr, fs::path target_path) {
     // result_list->push_back(target_path);
+    if (follow_sl(argument_map_ptr) && fs::is_symlink(target_path)) {
+        target_path = fs::read_symlink(target_path);
+    }
+
     auto target_tile_name = target_path.filename();
     if (((name_match(argument_map_ptr, target_tile_name) || name_match(argument_map_ptr, target_path)) && time_match(argument_map_ptr, target_path) && type_match(argument_map_ptr,  target_path))) {
         result_list_ptr->push_back(target_path);
@@ -409,6 +437,9 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
         }
         counter = temp_counter;
     }
+    
+    printff("post parsing\n");
+    post_parsing(objects);
     
     printff("finished parsing\n");
     return objects;
