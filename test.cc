@@ -6,7 +6,12 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
-    std::string s = (std::string)"../find";
+    std::string s = (std::string)"../{}find";
+    printf("original %s\n", s.c_str());
+    int pos = s.find("{}");
+    printf("pos: %i\n", pos);
+    s.replace(pos, 2, "bbbbb");
+    printf("%s\n", s.c_str());
     auto file_path = fs::path(s);
     if (fs::is_directory(file_path)) {
         printf("is dir\n");

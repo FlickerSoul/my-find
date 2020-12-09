@@ -22,8 +22,7 @@ int main(int argc, char* argv[]) {
         auto results = find_helper(map, loc);
 
         printf("\n======== result ========\n");
-        for (auto & path: *results) {
-            std::cout << path << std::endl;
-        }
+        print_helper(results);
+        exec_helper(results, "ls -l {} ;");
     }
 }

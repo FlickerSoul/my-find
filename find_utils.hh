@@ -10,6 +10,7 @@
 #include <functional>
 #include <stdarg.h>
 #include <sstream>
+#include <stdlib.h>
 
 namespace fs = std::filesystem;
 
@@ -53,6 +54,8 @@ static std::map<std::string, std::function<bool (const fs::path& )>> validation_
 // parsers 
 argument_map_t* parse_arguments(int argc, char* argv[]);
 result_list_t* find_helper(argument_map_t* argument_map, fs::path path);
+void exec_helper(result_list_t* result_list, std::string exec_string);
+void print_helper(result_list_t* result_list_t);
 
 static void printff(const char* format, ...) {
     if (_DEBUG) {

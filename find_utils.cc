@@ -440,7 +440,7 @@ argument_map_t* parse_arguments(int argc, char* argv[]) {
     
     printff("post parsing\n");
     post_parsing(objects);
-    
+
     printff("finished parsing\n");
     return objects;
 }
@@ -473,10 +473,27 @@ result_list_t* find_helper(argument_map_t* argument_map, fs::path path) {
     return result_list;
 }
 
-void exec_helper(result_list_t* result_list) {
+void exec_helper(result_list_t* result_list, std::string exec_string) {
+    // replace {} with file locations 
+    if (result_list->size() < 1) {
+        return;
+    }
+    std::string all_file_string = " ";
+    for (auto & result: *result_list) {
+        all_file_string += result + " ";
+    }
 
+    printff("all file string: %s\n", all_file_string.c_str());
+    int brace_pos = -1;
+    while ((brace_pos = exec_string.find("{}")) != -1) {
+        exec_string.replace(brace_pos, 2,  all_file_string);
+    }
+
+    system(exec_string.c_str());
 }
 
 void print_helper(result_list_t* result_list_t) {
-
+    for (auto & result: *result_list_t) {
+        printf("%s\n", result.c_str());
+    }
 }
