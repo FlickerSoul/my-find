@@ -50,6 +50,16 @@ bool default_eliminator(char* const cstr) {
     return !((std::string) cstr).starts_with("-");
 }
 
+bool special_eliminator(char* const cstr) {
+    return 
+        ((std::string) cstr).compare(NAME_ARG_FLAG) &&
+        ((std::string) cstr).compare(MTIME_ARG_FLAG) &&
+        ((std::string) cstr).compare(TYPE_ARG_FLAG) &&
+        ((std::string) cstr).compare(EXEC_ARG_FLAG) &&
+        ((std::string) cstr).compare(PRINT_ARG_FLAG) &&
+        ((std::string) cstr).compare(SL_ARG_FLAG);
+}
+
 argument_map_value_t* default_parser(std::string value) {
     if (value == "") {
         return nullptr;
@@ -88,7 +98,7 @@ int parse_mtime(argument_map_t* argument_map, int current_counter, int argc, cha
         current_counter, 
         argc,
         argv,
-        default_eliminator,
+        special_eliminator,
         default_parser
     );
 }
@@ -149,17 +159,6 @@ int parse_type(argument_map_t* argument_map, int current_counter, int argc, char
 }
 
 
-bool exec_eliminator(char* const cstr) {
-    return 
-        ((std::string) cstr).compare(NAME_ARG_FLAG) &&
-        ((std::string) cstr).compare(MTIME_ARG_FLAG) &&
-        ((std::string) cstr).compare(TYPE_ARG_FLAG) &&
-        ((std::string) cstr).compare(EXEC_ARG_FLAG) &&
-        ((std::string) cstr).compare(PRINT_ARG_FLAG) &&
-        ((std::string) cstr).compare(SL_ARG_FLAG);
-}
-
-
 // -exec 
 int parse_exec(argument_map_t* argument_map, int current_counter, int argc, char* const argv[]) {
     return parser_base(
@@ -168,7 +167,7 @@ int parse_exec(argument_map_t* argument_map, int current_counter, int argc, char
         current_counter, 
         argc,
         argv,
-        exec_eliminator,
+        special_eliminator,
         default_parser
     );
 }
@@ -316,6 +315,16 @@ bool time_match(argument_map_t* const argument_map_ptr, fs::path const target_pa
     }
 
     long long time_range = atoi((*(*argument_map_ptr)[MTIME_ARG_FLAG])[0].c_str());
+    if (time_range > 0) {
+        printf("positive m time\n");
+        return false;
+    }
+
+    if (fs::is_symlink(target_path) && !fs::exists(fs::read_symlink(target_path))) {
+        return true;
+    }
+
+    time_range = -time_range + 1;
     auto file_last_modified_time = fs::last_write_time(target_path);
     auto current_time = std::chrono::system_clock::now();
     auto hours_lasted = std::chrono::duration_cast<std::chrono::hours>(current_time.time_since_epoch()).count() - std::chrono::duration_cast<std::chrono::hours>(file_last_modified_time.time_since_epoch()).count();

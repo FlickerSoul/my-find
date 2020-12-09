@@ -35,7 +35,7 @@ static auto TYPE_ARG_FLAG = "-type";
 static auto EXEC_ARG_FLAG = "-exec";
 static auto PRINT_ARG_FLAG = "-print";
 static auto SL_ARG_FLAG = "-L";
-static bool _DEBUG = true;
+static bool _DEBUG = false;
 
 static std::vector<parser_t> parsers;
 static std::vector<matcher_t> matchers;
